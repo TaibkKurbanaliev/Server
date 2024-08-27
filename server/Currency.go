@@ -43,7 +43,7 @@ type Coin struct {
 }
 
 func SetCoinsRequest() error { // Return coins info from coingecko
-	url := "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin%2Cethereum&category=layer-1&x_cg_demo_api_key=CG-SK2pJUgrSYHFNzR2C4ChUgR4"
+	url := "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin%2Cethereum&category=layer-1&x_cg_demo_api_key="
 
 	req, err := http.NewRequest("GET", url, nil)
 

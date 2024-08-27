@@ -10,5 +10,5 @@ func main() {
 	s := server.NewServer("sdfewfwef", "qewqeqwewqeqw")
 
 	http.Handle("/", s.Router)
-	log.Fatal(http.ListenAndServe(":8085", nil))
+	log.Fatal(http.ListenAndServe("", nil))
 }

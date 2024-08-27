@@ -79,6 +79,12 @@ func (db *DataBase) Add(item interface{}, tableName string) error {
 	for i := 0; i < itemValue.NumField(); i++ {
 		if itemValue.Field(i).Kind() == reflect.String {
 			fields += fmt.Sprintf("'%v',", itemValue.Field(i).Interface())
+		} else if itemValue.Field(i).Kind() == reflect.Slice {
+			array := fmt.Sprintf("'%v',", itemValue.Field(i).Interface())
+			array = strings.Replace(array, "[", "{", -1)
+			array = strings.Replace(array, " ", ",", -1)
+			array = strings.Replace(array, "]", "}", -1)
+			fields += array
 		} else {
 			fields += fmt.Sprintf("%v,", itemValue.Field(i).Interface())
 		}
@@ -88,7 +94,7 @@ func (db *DataBase) Add(item interface{}, tableName string) error {
 
 	query := fmt.Sprintf("Insert into \"%v\" values (%v);", tableName, fields)
 	result, err := db.connection.Exec(query)
-
+	log.Println("Kek")
 	if err != nil {
 		return err
 	}

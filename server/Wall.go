@@ -2,12 +2,13 @@ package server
 
 import (
 	"bytes"
-	"image"
+	"image/png"
 )
 
 type WallPaper struct {
-	id              int64  `json:"id"`
-	image           []byte `json:"image"`
+	Id              int64 `json:"id"`
+	UserId          int64
+	Image           []byte `json:"image"`
 	Width, Height   int
 	Format          string
 	Name            string
@@ -17,19 +18,29 @@ type WallPaper struct {
 	NumberOFRatings int64
 }
 
-func NewWallPaper(img []byte) (*WallPaper, error) {
-	imageInfo, format, err := image.Decode(bytes.NewBuffer(img))
+type JsonImage struct {
+	Image []byte `json:"image"`
+}
+
+func (wallPaper *WallPaper) Init(jsonImage JsonImage) error {
+
+	imageInfo, err := png.Decode(bytes.NewBuffer(jsonImage.Image))
 
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	var wallPaper *WallPaper = new(WallPaper)
-
+	wallPaper.Id = 1
+	wallPaper.UserId = 1
 	wallPaper.Width = imageInfo.Bounds().Dx()
 	wallPaper.Height = imageInfo.Bounds().Dy()
-	wallPaper.Format = format
-	wallPaper.image = img
+	wallPaper.Format = "png"
+	wallPaper.Image = jsonImage.Image
+	wallPaper.Name = ""
+	wallPaper.Decription = ""
+	wallPaper.Tag = ""
+	wallPaper.Rating = 0.0
+	wallPaper.NumberOFRatings = 0
 
-	return wallPaper, nil
+	return nil
 }

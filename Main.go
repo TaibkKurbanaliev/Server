@@ -7,8 +7,8 @@ import (
 )
 
 func main() {
-	s := server.NewServer("sdfewfwef", "qewqeqwewqeqw")
+	s := server.NewServer("TestConfiguration.json")
 
 	http.Handle("/", s.Router)
-	log.Fatal(http.ListenAndServe("", nil))
+	log.Fatal(http.ListenAndServe(":8085", nil))
 }

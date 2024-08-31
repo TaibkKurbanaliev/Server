@@ -1,29 +1,42 @@
 package server
 
 import (
+	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"image"
+	"image/png"
+	"io"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/gorilla/mux"
 )
 
 type Server struct {
-	dataBase *DataBase
-	Router   *mux.Router
+	dataBase             *DataBase
+	Router               *mux.Router
+	WallPaperStoragePath string
 }
 
-func NewServer(dbConnectionString string, currencyToken string) *Server {
+func NewServer(configurationFilePath string) *Server {
 	var server *Server = new(Server)
-	server.dataBase = NewDataBase("postgres", "", "", "disable")
+	configuration, err := readConfigurationFile(configurationFilePath)
+
+	if err != nil {
+		log.Panic(err)
+		return nil
+	}
+
+	server.dataBase = NewDataBase(configuration["dbConnectionString"].(string))
+	server.WallPaperStoragePath = configuration["storagePath"].(string)
 	server.Router = mux.NewRouter()
 	server.Router.StrictSlash(true)
 	server.initServerHandelFunctions()
-	// if err != nil {
-	// 	panic(err)
-	// }
+
 	return server
 }
 
@@ -93,22 +106,137 @@ func (server *Server) createWallPaper(w http.ResponseWriter, req *http.Request) 
 		return
 	}
 
-	var WallPaper WallPaper
-	err = WallPaper.Init(jsonImage)
+	wallPaper, err := NewWallPaper(jsonImage, server.WallPaperStoragePath)
 
 	if err != nil {
-		log.Println(err.Error())
+		log.Panic(err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	err = server.dataBase.Add(WallPaper, "wallPaper")
+	path := server.WallPaperStoragePath + jsonImage.FileName
+	err = writeFileToStorage(jsonImage.Image, path)
 
 	if err != nil {
-		log.Println(err.Error())
+		log.Panic(err.Error())
+		return
+	}
+
+	err = server.dataBase.Add(*wallPaper, "wallPaper")
+
+	if err != nil {
+		log.Panic(err.Error())
+		return
 	}
 }
 
 func (server *Server) getWallPaperById(w http.ResponseWriter, req *http.Request) {
-	//  implement logic to handle request
+	id, err := strconv.Atoi(mux.Vars(req)["id"])
+
+	if err != nil {
+		log.Panic(err)
+		return
+	}
+
+	var wallPaper WallPaper
+	err = server.dataBase.Select(id, "wallPaper", &wallPaper)
+
+	if err != nil {
+		log.Panic(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	jsonData, err := readImageFromStorage(wallPaper.ImagePath, wallPaper.Name)
+
+	if err != nil {
+		log.Panic(err)
+		return
+	}
+
+	if err != nil {
+		log.Panic(err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(jsonData.Bytes())
+}
+
+func readConfigurationFile(filePath string) (map[string]interface{}, error) {
+	var jsonMap map[string]interface{}
+	file, err := os.Open(filePath)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer file.Close()
+
+	var jsonData []byte
+	jsonData, err = io.ReadAll(file)
+
+	if err != nil {
+		return nil, err
+	}
+
+	err = json.Unmarshal(jsonData, &jsonMap)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return jsonMap, nil
+}
+
+func writeFileToStorage(data []byte, path string) error {
+	img, _, err := image.Decode(bytes.NewReader(data))
+
+	if err != nil {
+		return err
+	}
+
+	out, _ := os.Create("." + path)
+	defer out.Close()
+
+	err = png.Encode(out, img)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func readImageFromStorage(filePath string, fileName string) (*bytes.Buffer, error) {
+	file, err := os.Open("." + filePath)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer file.Close()
+
+	fileInfo, _ := file.Stat()
+	var size int64 = fileInfo.Size()
+	byt := make([]byte, size)
+
+	buffer := bufio.NewReader(file)
+	_, err = buffer.Read(byt)
+
+	if err != nil {
+		return nil, err
+	}
+
+	var jsonImage = JsonImage{
+		FileName: fileName,
+		Image:    byt,
+	}
+	jsonBytes, err := json.Marshal(jsonImage)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return bytes.NewBuffer(jsonBytes), err
 }

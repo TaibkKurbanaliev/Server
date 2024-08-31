@@ -1,0 +1,6 @@
+{
+    "dbConnectionString": "database connection string",
+    "currencyToken": "currency token",
+    "storagePath": "Path to folder where will be contain iamges",
+    "port": 8080
+}

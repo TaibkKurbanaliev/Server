@@ -30,18 +30,12 @@ type User struct {
 
 type DataBase struct {
 	ConnectionString string
-	DBName           string
 	connection       *sql.DB
-	user             string
-	password         string
 }
 
-func NewDataBase(login string, password string, dbname string, sslmode string) *DataBase {
+func NewDataBase(dbConnectionString string) *DataBase {
 	var db *DataBase = new(DataBase)
-	db.DBName = dbname
-	db.user = login
-	db.password = password
-	db.ConnectionString = fmt.Sprintf("user=%v password=%v dbname=%v sslmode=%v", login, password, dbname, sslmode)
+	db.ConnectionString = dbConnectionString
 
 	var err error
 	db.connection, err = sql.Open("postgres", db.ConnectionString)
@@ -79,12 +73,14 @@ func (db *DataBase) Add(item interface{}, tableName string) error {
 	for i := 0; i < itemValue.NumField(); i++ {
 		if itemValue.Field(i).Kind() == reflect.String {
 			fields += fmt.Sprintf("'%v',", itemValue.Field(i).Interface())
+
 		} else if itemValue.Field(i).Kind() == reflect.Slice {
 			array := fmt.Sprintf("'%v',", itemValue.Field(i).Interface())
 			array = strings.Replace(array, "[", "{", -1)
 			array = strings.Replace(array, " ", ",", -1)
 			array = strings.Replace(array, "]", "}", -1)
 			fields += array
+
 		} else {
 			fields += fmt.Sprintf("%v,", itemValue.Field(i).Interface())
 		}
@@ -94,7 +90,6 @@ func (db *DataBase) Add(item interface{}, tableName string) error {
 
 	query := fmt.Sprintf("Insert into \"%v\" values (%v);", tableName, fields)
 	result, err := db.connection.Exec(query)
-	log.Println("Kek")
 	if err != nil {
 		return err
 	}
@@ -118,16 +113,18 @@ func (db *DataBase) Select(id int, tableName string, outItem interface{}) error 
 		if val.Kind() != reflect.Ptr {
 			return errors.New("dest must be a pointer to a struct")
 		}
-		val = val.Elem() // get the underlying struct value
+		val = val.Elem()
 		if val.Kind() != reflect.Struct {
 			return errors.New("dest must be a pointer to a struct")
 		}
 
-		numCols := val.NumField() // now this should work
+		numCols := val.NumField()
 		columns := make([]interface{}, numCols)
+
 		for i := 0; i < numCols; i++ {
 			columns[i] = val.Field(i).Addr().Interface()
 		}
+
 		rows.Scan(columns...)
 	}
 
@@ -135,7 +132,6 @@ func (db *DataBase) Select(id int, tableName string, outItem interface{}) error 
 }
 
 func (db *DataBase) SelectAll(tableName string, outItem interface{}) ([]interface{}, error) {
-	// out item is item that will be last and used like a typeOf out fields
 	query := fmt.Sprintf("Select * From \"%v\"", tableName)
 	rows, err := db.connection.Query(query)
 

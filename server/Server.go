@@ -154,11 +154,6 @@ func (server *Server) getWallPaperById(w http.ResponseWriter, req *http.Request)
 		return
 	}
 
-	if err != nil {
-		log.Panic(err)
-		return
-	}
-
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(jsonData.Bytes())
 }
